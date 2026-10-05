@@ -90,7 +90,26 @@
   input[type=number]::-webkit-outer-spin-button,
   input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
   input[type=number]:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,140,255,.16);}
-  input.edited{border-color:rgba(255,176,32,.5);}
+  input[readonly]{color:#9dc0ff;cursor:default;}
+  input[readonly]:focus{border-color:var(--line);box-shadow:none;}
+
+  /* 工作日数 自动/手动 */
+  .mini-toggle{
+    display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;
+    background:var(--card-2);border:1px solid var(--line);border-radius:9px;padding:4px;
+  }
+  .mini-toggle button{
+    appearance:none;border:0;background:transparent;color:var(--muted);
+    font-family:inherit;font-size:12px;font-weight:600;
+    padding:7px 6px;border-radius:6px;cursor:pointer;transition:.18s;
+  }
+  .mini-toggle button:hover{color:var(--text);}
+  .mini-toggle button.active{background:rgba(79,140,255,.18);color:#9dc0ff;}
+  .derive{
+    margin-top:9px;font-size:12px;line-height:1.6;color:var(--accent-2);
+    font-variant-numeric:tabular-nums;min-height:19px;
+  }
+  .derive b{color:#7fe9cc;font-weight:700;}
 
   /* 工作制 */
   .chips{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
@@ -178,10 +197,10 @@
         <span class="hint">决定每月工作日数</span>
       </div>
       <div class="chips" id="pattern">
-        <button data-ratio="5/7"  data-name="5休2">5休2<small>双休</small></button>
-        <button data-ratio="11/14" data-name="5+6大小周">5+6<small>大小周</small></button>
-        <button data-ratio="6/7"  data-name="6休1">6休1<small>单休</small></button>
-        <button data-ratio="7/7"  data-name="7+0无休">7+0<small>无休</small></button>
+        <button data-cycle="7"  data-work="5" data-name="5休2">5休2<small>双休</small></button>
+        <button data-cycle="14" data-work="11" data-name="5+6大小周">5+6<small>大小周</small></button>
+        <button data-cycle="7"  data-work="6" data-name="6休1">6休1<small>单休</small></button>
+        <button data-cycle="7"  data-work="7" data-name="7+0无休">7+0<small>无休</small></button>
       </div>
     </div>
 
@@ -190,37 +209,42 @@
       <div class="field">
         <div class="label-row">
           <label for="daysPerMonth">每月天数</label>
-          <span class="hint">默认 30</span>
+          <span class="hint">默认 30 ＝ 4 周 + 2 天</span>
         </div>
         <div class="input-wrap">
-          <input type="number" id="daysPerMonth" value="30" min="1" max="31" step="1" inputmode="decimal" />
+          <input type="number" id="daysPerMonth" value="30" min="1" max="31" step="1" inputmode="numeric" />
           <span class="unit">天</span>
         </div>
       </div>
 
-      <!-- 每月工作日 -->
+      <!-- 每日工时 -->
       <div class="field">
         <div class="label-row">
-          <label for="workDays">每月工作日数</label>
-          <span class="hint" id="workDaysHint">自动</span>
+          <label for="hoursPerDay">每日工作时长</label>
+          <span class="hint">不含午休，填净工时</span>
         </div>
         <div class="input-wrap">
-          <input type="number" id="workDays" value="21.43" min="0" step="0.01" inputmode="decimal" />
-          <span class="unit">天</span>
+          <input type="number" id="hoursPerDay" value="8" min="0" step="0.5" inputmode="decimal" />
+          <span class="unit">小时 / 天</span>
         </div>
       </div>
     </div>
 
-    <!-- 每日工时 -->
+    <!-- 每月工作日 -->
     <div class="field">
       <div class="label-row">
-        <label for="hoursPerDay">每日工作时长</label>
-        <span class="hint">不含午休，填净工作时长</span>
+        <label for="workDays">每月工作日数</label>
+        <span class="hint" id="workDaysHint">自动推算</span>
       </div>
       <div class="input-wrap">
-        <input type="number" id="hoursPerDay" value="8" min="0" step="0.5" inputmode="decimal" />
-        <span class="unit">小时 / 天</span>
+        <input type="number" id="workDays" value="22" min="0" step="1" inputmode="numeric" readonly />
+        <span class="unit">天</span>
       </div>
+      <div class="mini-toggle" id="daysMode">
+        <button data-daysmode="auto" class="active">按工作制自动</button>
+        <button data-daysmode="manual">手动输入</button>
+      </div>
+      <div class="derive" id="workDaysDerive"></div>
     </div>
   </div>
 
@@ -249,9 +273,18 @@
       <b>计算方式</b><br />
       时薪 = 月薪 ÷（每月工作日数 × 每日工作时长）<br />
       月薪 = 时薪 × 每月工作日数 × 每日工作时长<br /><br />
-      <b>工作日数怎么来的</b><br />
-      按工作制比例 × 每月天数自动算出，可手动覆盖（例如按当月实际排班填 22 天）。<br />
-      5休2 = 5÷7　6休1 = 6÷7　5+6大小周 = 11÷14　7+0无休 = 全部天数<br /><br />
+
+      <b>每月工作日怎么算</b><br />
+      默认每月按 <b>30 天</b> 计，也就是 <b>4 个整周 + 余 2 天</b>。
+      先算整周的工作日，余下的天数全部计入工作日，
+      所以每天数都是<b>整数</b>，不会出现小数：<br />
+      ・5休2（双休）　　→ 4×5 + 2 ＝ <b>22 天</b><br />
+      ・5+6大小周　　　 → 2×11 + 2 ＝ <b>24 天</b>（14 天为一个周期，含 11 个工作日）<br />
+      ・6休1（单休）　　→ 4×6 + 2 ＝ <b>26 天</b><br />
+      ・7+0无休　　　　 → 4×7 + 2 ＝ <b>30 天</b><br />
+      当月天数不是 30 时按同样规则重算；若要按实际排班填写，
+      把「每月工作日数」切到「手动输入」即可直接改。<br /><br />
+
       <b>折合标准工时制的含义</b><br />
       把上面的实际时薪，放回「21.75 天 × 8 小时 = 174 小时」的标准月里，
       看它等价于多少月薪。它便于横向比较不同工作制的真实性价比。
@@ -273,6 +306,8 @@
     daysPerMonth: document.getElementById('daysPerMonth'),
     workDays: document.getElementById('workDays'),
     workDaysHint: document.getElementById('workDaysHint'),
+    workDaysDerive: document.getElementById('workDaysDerive'),
+    daysMode: document.getElementById('daysMode'),
     hoursPerDay: document.getElementById('hoursPerDay'),
     resultCap: document.getElementById('resultCap'),
     resultValue: document.getElementById('resultValue'),
@@ -288,13 +323,21 @@
 
   var state = {
     mode: 'toHourly',
-    ratio: 5 / 7,
-    manualDays: false
+    cycle: 7,          // 一个排班周期的天数
+    cycleWork: 5,      // 该周期内的工作日数
+    daysMode: 'auto'   // auto | manual
   };
 
   function num(input, fallback) {
     var v = parseFloat(input.value);
     return isFinite(v) && v >= 0 ? v : (fallback || 0);
+  }
+
+  // 整数直接显示，小数最多两位并去掉尾零
+  function trim(n) {
+    if (!isFinite(n)) return '—';
+    if (Math.abs(n - Math.round(n)) < 1e-9) return String(Math.round(n));
+    return String(Math.round(n * 100) / 100);
   }
 
   function fmt(n, digits) {
@@ -310,11 +353,38 @@
     return n >= 10000 ? '¥' + fmt(n, 0) : '¥' + fmt(n, 2);
   }
 
-  function syncWorkDaysFromPattern() {
-    if (state.manualDays) return;
+  /**
+   * 由「每月天数 + 工作制」推算整月工作日数。
+   * 规则：每月 = 若干个完整排班周期 + 余下的天数，余下的天数全部计入工作日。
+   * 例：30 天 / 5休2  → 4 个整周 × 5 天 + 余 2 天 = 22 天
+   *     30 天 / 大小周 → 2 个周期 × 11 天 + 余 2 天 = 24 天
+   */
+  function autoWorkDays() {
     var dpm = num(el.daysPerMonth, 30);
-    var days = dpm * state.ratio;
-    el.workDays.value = (Math.round(days * 100) / 100).toString();
+    var full = Math.floor(dpm / state.cycle);
+    var rem = dpm - full * state.cycle;
+    return { full: full, rem: rem, days: full * state.cycleWork + rem };
+  }
+
+  function deriveHTML(r) {
+    var unit = state.cycle === 7 ? '周' : '个周期';
+    var left = r.full + ' ' + unit + ' × ' + state.cycleWork + ' 天';
+    if (r.rem > 0) left += ' + 余 ' + trim(r.rem) + ' 天';
+    return left + ' ＝ <b>' + trim(r.days) + ' 天</b>';
+  }
+
+  function refreshWorkDays() {
+    if (state.daysMode === 'auto') {
+      var r = autoWorkDays();
+      el.workDays.value = trim(r.days);
+      el.workDays.readOnly = true;
+      el.workDaysHint.textContent = '自动推算';
+      el.workDaysDerive.innerHTML = deriveHTML(r);
+    } else {
+      el.workDays.readOnly = false;
+      el.workDaysHint.textContent = '手动输入';
+      el.workDaysDerive.innerHTML = '已手动指定，不随工作制变化';
+    }
   }
 
   function compute() {
@@ -340,18 +410,18 @@
     if (state.mode === 'toHourly') {
       el.resultCap.textContent = '你的实际时薪';
       el.resultValue.textContent = fmt(hourly, 2);
-      el.resultFormula.textContent = money(amount) + ' ÷ (' + fmt(workDays, 2) + ' 天 × ' +
-        fmt(hours, 2) + ' 小时) = ¥' + fmt(hourly, 2) + ' / 小时';
+      el.resultFormula.textContent = money(amount) + ' ÷ (' + trim(workDays) + ' 天 × ' +
+        trim(hours) + ' 小时) = ¥' + fmt(hourly, 2) + ' / 小时';
     } else {
       el.resultCap.textContent = '对应月薪';
       el.resultValue.textContent = fmt(monthly, 2);
-      el.resultFormula.textContent = '¥' + fmt(amount, 2) + ' × ' + fmt(workDays, 2) + ' 天 × ' +
-        fmt(hours, 2) + ' 小时 = ' + money(monthly) + ' / 月';
+      el.resultFormula.textContent = '¥' + fmt(amount, 2) + ' × ' + trim(workDays) + ' 天 × ' +
+        trim(hours) + ' 小时 = ' + money(monthly) + ' / 月';
     }
 
     // 明细
-    el.outDays.textContent = fmt(workDays, 2) + ' 天';
-    el.outHours.textContent = fmt(hours, 2) + ' 小时';
+    el.outDays.textContent = trim(workDays) + ' 天';
+    el.outHours.textContent = trim(hours) + ' 小时';
     el.outMonthlyHours.textContent = fmt(monthlyHours, 2) + ' 小时';
     el.outDaily.textContent = money(daily);
     el.outAnnual.textContent = money(annual);
@@ -369,7 +439,7 @@
   }
 
   function update() {
-    syncWorkDaysFromPattern();
+    refreshWorkDays();
     compute();
   }
 
@@ -389,32 +459,35 @@
 
   // 工作制切换
   el.pattern.addEventListener('click', function (e) {
-    var btn = e.target.closest('button[data-ratio]');
+    var btn = e.target.closest('button[data-cycle]');
     if (!btn) return;
-    var parts = btn.dataset.ratio.split('/');
-    state.ratio = parseFloat(parts[0]) / parseFloat(parts[1]);
-    state.manualDays = false;
-    el.workDays.classList.remove('edited');
-    el.workDaysHint.textContent = btn.dataset.name + ' · 自动';
+    state.cycle = parseFloat(btn.dataset.cycle);
+    state.cycleWork = parseFloat(btn.dataset.work);
     Array.prototype.forEach.call(el.pattern.querySelectorAll('button'), function (b) {
       b.classList.toggle('active', b === btn);
     });
     update();
   });
 
-  // 每月天数变化 → 重新推算工作日
+  // 每月天数变化 → 自动模式下重新推算
   el.daysPerMonth.addEventListener('input', function () {
-    state.manualDays = false;
-    el.workDays.classList.remove('edited');
-    el.workDaysHint.textContent = '按比例自动';
+    if (state.daysMode === 'auto') refreshWorkDays();
+    compute();
+  });
+
+  // 自动 / 手动 切换
+  el.daysMode.addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-daysmode]');
+    if (!btn) return;
+    state.daysMode = btn.dataset.daysmode;
+    Array.prototype.forEach.call(el.daysMode.querySelectorAll('button'), function (b) {
+      b.classList.toggle('active', b === btn);
+    });
     update();
   });
 
-  // 手动改工作日 → 脱离自动
   el.workDays.addEventListener('input', function () {
-    state.manualDays = true;
-    el.workDays.classList.add('edited');
-    el.workDaysHint.textContent = '已手动指定';
+    if (state.daysMode !== 'manual') return;
     compute();
   });
 
@@ -422,7 +495,7 @@
   el.hoursPerDay.addEventListener('input', compute);
 
   // 初始化
-  el.pattern.querySelector('button[data-ratio="5/7"]').classList.add('active');
+  el.pattern.querySelector('button[data-cycle="7"][data-work="5"]').classList.add('active');
   update();
 })();
 </script>
