@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>时薪 / 月薪 换算计算器</title>
+<style>
+  :root{
+    --bg:#0f1115;
+    --card:#171a21;
+    --card-2:#1e222b;
+    --line:#2a2f3a;
+    --text:#e8ebf0;
+    --muted:#8b93a3;
+    --accent:#4f8cff;
+    --accent-2:#31d0aa;
+    --warn:#ffb020;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:radial-gradient(900px 500px at 15% -10%, #1b2740 0%, transparent 60%), var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+    min-height:100vh;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding:32px 16px 64px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{width:100%;max-width:760px;}
+  header{margin-bottom:22px;}
+  h1{font-size:22px;margin:0 0 6px;letter-spacing:.3px;}
+  .sub{color:var(--muted);font-size:13px;margin:0;}
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:20px;
+    margin-bottom:16px;
+  }
+
+  /* 模式切换 */
+  .mode{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    background:var(--card-2);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:6px;
+    margin-bottom:22px;
+  }
+  .mode button{
+    appearance:none;border:0;background:transparent;color:var(--muted);
+    font-size:14px;font-weight:600;font-family:inherit;
+    padding:11px 8px;border-radius:9px;cursor:pointer;transition:.18s;
+  }
+  .mode button:hover{color:var(--text);}
+  .mode button.active{background:var(--accent);color:#fff;box-shadow:0 4px 14px rgba(79,140,255,.35);}
+
+  .field{margin-bottom:20px;}
+  .field:last-child{margin-bottom:0;}
+  .label-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:9px;}
+  label{font-size:13px;font-weight:600;color:var(--text);}
+  .hint{font-size:11.5px;color:var(--muted);}
+
+  .input-wrap{position:relative;}
+  .input-wrap .unit{
+    position:absolute;right:14px;top:50%;transform:translateY(-50%);
+    color:var(--muted);font-size:13px;pointer-events:none;
+  }
+  input[type=number]{
+    width:100%;
+    background:var(--card-2);
+    border:1px solid var(--line);
+    border-radius:10px;
+    color:var(--text);
+    font-size:17px;
+    font-weight:600;
+    font-family:inherit;
+    padding:13px 56px 13px 14px;
+    outline:none;
+    transition:.18s;
+    -moz-appearance:textfield;
+  }
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+  input[type=number]:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,140,255,.16);}
+  input.edited{border-color:rgba(255,176,32,.5);}
+
+  /* 工作制 */
+  .chips{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+  .chips button{
+    appearance:none;font-family:inherit;cursor:pointer;
+    background:var(--card-2);border:1px solid var(--line);color:var(--muted);
+    border-radius:10px;padding:11px 4px;font-size:13px;font-weight:600;transition:.18s;
+    line-height:1.35;
+  }
+  .chips button small{display:block;font-size:10.5px;font-weight:500;opacity:.75;margin-top:3px;}
+  .chips button:hover{color:var(--text);border-color:#3a4152;}
+  .chips button.active{
+    background:rgba(79,140,255,.14);border-color:var(--accent);color:#9dc0ff;
+  }
+
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+
+  /* 结果 */
+  .result{
+    background:linear-gradient(135deg, rgba(79,140,255,.16), rgba(49,208,170,.10));
+    border:1px solid rgba(79,140,255,.35);
+    border-radius:var(--radius);
+    padding:24px 20px;
+    margin-bottom:16px;
+    text-align:center;
+  }
+  .result .cap{font-size:12.5px;color:#a8b4cc;letter-spacing:.5px;margin-bottom:8px;}
+  .result .big{
+    font-size:44px;font-weight:800;letter-spacing:-1px;line-height:1.1;
+    background:linear-gradient(90deg,#7fb0ff,#4fe0bd);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+    font-variant-numeric:tabular-nums;
+  }
+  .result .big .cur{font-size:22px;font-weight:700;margin-right:2px;}
+  .result .formula{font-size:12.5px;color:var(--muted);margin-top:10px;font-variant-numeric:tabular-nums;}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  td{padding:10px 0;border-bottom:1px dashed var(--line);color:var(--muted);}
+  td:last-child{text-align:right;color:var(--text);font-weight:600;font-variant-numeric:tabular-nums;}
+  tr:last-child td{border-bottom:0;}
+  .hl{color:var(--accent-2) !important;}
+
+  .note{font-size:12px;color:var(--muted);line-height:1.75;}
+  .note b{color:#c8cfdb;font-weight:600;}
+
+  @media (max-width:560px){
+    .chips{grid-template-columns:repeat(2,1fr);}
+    .grid-2{grid-template-columns:1fr;}
+    .result .big{font-size:36px;}
+    body{padding:20px 12px 48px;}
+    .card{padding:16px;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>时薪 / 月薪 换算计算器</h1>
+    <p class="sub">按实际工作制与每日工时，折算你的真实时薪</p>
+  </header>
+
+  <!-- 模式 -->
+  <div class="mode" id="mode">
+    <button data-mode="toHourly" class="active">月薪 → 时薪</button>
+    <button data-mode="toMonthly">时薪 → 月薪</button>
+  </div>
+
+  <div class="card">
+    <!-- 主金额 -->
+    <div class="field">
+      <div class="label-row">
+        <label id="amountLabel" for="amount">月薪</label>
+        <span class="hint" id="amountHint">税前 / 到手均可，结果同口径</span>
+      </div>
+      <div class="input-wrap">
+        <input type="number" id="amount" value="10000" min="0" step="100" inputmode="decimal" />
+        <span class="unit" id="amountUnit">元 / 月</span>
+      </div>
+    </div>
+
+    <!-- 工作制 -->
+    <div class="field">
+      <div class="label-row">
+        <label>工作制</label>
+        <span class="hint">决定每月工作日数</span>
+      </div>
+      <div class="chips" id="pattern">
+        <button data-ratio="5/7"  data-name="5休2">5休2<small>双休</small></button>
+        <button data-ratio="11/14" data-name="5+6大小周">5+6<small>大小周</small></button>
+        <button data-ratio="6/7"  data-name="6休1">6休1<small>单休</small></button>
+        <button data-ratio="7/7"  data-name="7+0无休">7+0<small>无休</small></button>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <!-- 每月天数 -->
+      <div class="field">
+        <div class="label-row">
+          <label for="daysPerMonth">每月天数</label>
+          <span class="hint">默认 30</span>
+        </div>
+        <div class="input-wrap">
+          <input type="number" id="daysPerMonth" value="30" min="1" max="31" step="1" inputmode="decimal" />
+          <span class="unit">天</span>
+        </div>
+      </div>
+
+      <!-- 每月工作日 -->
+      <div class="field">
+        <div class="label-row">
+          <label for="workDays">每月工作日数</label>
+          <span class="hint" id="workDaysHint">自动</span>
+        </div>
+        <div class="input-wrap">
+          <input type="number" id="workDays" value="21.43" min="0" step="0.01" inputmode="decimal" />
+          <span class="unit">天</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 每日工时 -->
+    <div class="field">
+      <div class="label-row">
+        <label for="hoursPerDay">每日工作时长</label>
+        <span class="hint">不含午休，填净工作时长</span>
+      </div>
+      <div class="input-wrap">
+        <input type="number" id="hoursPerDay" value="8" min="0" step="0.5" inputmode="decimal" />
+        <span class="unit">小时 / 天</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 结果 -->
+  <div class="result">
+    <div class="cap" id="resultCap">你的实际时薪</div>
+    <div class="big"><span class="cur">¥</span><span id="resultValue">0.00</span></div>
+    <div class="formula" id="resultFormula"></div>
+  </div>
+
+  <!-- 明细 -->
+  <div class="card">
+    <table>
+      <tr><td>每月工作日</td><td id="outDays">—</td></tr>
+      <tr><td>每日工时</td><td id="outHours">—</td></tr>
+      <tr><td>每月总工时</td><td id="outMonthlyHours">—</td></tr>
+      <tr><td>折算日薪</td><td id="outDaily">—</td></tr>
+      <tr><td>年收入（×12）</td><td id="outAnnual">—</td></tr>
+      <tr><td>年总工时</td><td id="outAnnualHours">—</td></tr>
+      <tr><td class="hl">折合标准工时制月薪（21.75天 × 8h）</td><td class="hl" id="outStandard">—</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <p class="note">
+      <b>计算方式</b><br />
+      时薪 = 月薪 ÷（每月工作日数 × 每日工作时长）<br />
+      月薪 = 时薪 × 每月工作日数 × 每日工作时长<br /><br />
+      <b>工作日数怎么来的</b><br />
+      按工作制比例 × 每月天数自动算出，可手动覆盖（例如按当月实际排班填 22 天）。<br />
+      5休2 = 5÷7　6休1 = 6÷7　5+6大小周 = 11÷14　7+0无休 = 全部天数<br /><br />
+      <b>折合标准工时制的含义</b><br />
+      把上面的实际时薪，放回「21.75 天 × 8 小时 = 174 小时」的标准月里，
+      看它等价于多少月薪。它便于横向比较不同工作制的真实性价比。
+    </p>
+  </div>
+</div>
+
+<script>
+(function () {
+  var STANDARD_DAYS = 21.75;   // 标准工时制月平均计薪天数
+  var STANDARD_HOURS = 8;      // 标准日工时
+
+  var el = {
+    mode: document.getElementById('mode'),
+    amount: document.getElementById('amount'),
+    amountLabel: document.getElementById('amountLabel'),
+    amountUnit: document.getElementById('amountUnit'),
+    pattern: document.getElementById('pattern'),
+    daysPerMonth: document.getElementById('daysPerMonth'),
+    workDays: document.getElementById('workDays'),
+    workDaysHint: document.getElementById('workDaysHint'),
+    hoursPerDay: document.getElementById('hoursPerDay'),
+    resultCap: document.getElementById('resultCap'),
+    resultValue: document.getElementById('resultValue'),
+    resultFormula: document.getElementById('resultFormula'),
+    outDays: document.getElementById('outDays'),
+    outHours: document.getElementById('outHours'),
+    outMonthlyHours: document.getElementById('outMonthlyHours'),
+    outDaily: document.getElementById('outDaily'),
+    outAnnual: document.getElementById('outAnnual'),
+    outAnnualHours: document.getElementById('outAnnualHours'),
+    outStandard: document.getElementById('outStandard')
+  };
+
+  var state = {
+    mode: 'toHourly',
+    ratio: 5 / 7,
+    manualDays: false
+  };
+
+  function num(input, fallback) {
+    var v = parseFloat(input.value);
+    return isFinite(v) && v >= 0 ? v : (fallback || 0);
+  }
+
+  function fmt(n, digits) {
+    if (!isFinite(n)) return '—';
+    digits = digits === undefined ? 2 : digits;
+    return n.toLocaleString('zh-CN', {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits
+    });
+  }
+
+  function money(n) {
+    return n >= 10000 ? '¥' + fmt(n, 0) : '¥' + fmt(n, 2);
+  }
+
+  function syncWorkDaysFromPattern() {
+    if (state.manualDays) return;
+    var dpm = num(el.daysPerMonth, 30);
+    var days = dpm * state.ratio;
+    el.workDays.value = (Math.round(days * 100) / 100).toString();
+  }
+
+  function compute() {
+    var workDays = num(el.workDays, 0);
+    var hours = num(el.hoursPerDay, 0);
+    var amount = num(el.amount, 0);
+
+    var monthlyHours = workDays * hours;
+    var hourly, monthly;
+    if (state.mode === 'toHourly') {
+      monthly = amount;                                    // 输入是月薪
+      hourly = monthlyHours > 0 ? monthly / monthlyHours : 0;
+    } else {
+      hourly = amount;                                     // 输入是时薪
+      monthly = hourly * monthlyHours;
+    }
+    var daily = workDays > 0 ? monthly / workDays : 0;
+    var annual = monthly * 12;
+    var annualHours = monthlyHours * 12;
+    var standardMonthly = hourly * STANDARD_DAYS * STANDARD_HOURS;
+
+    // 主结果
+    if (state.mode === 'toHourly') {
+      el.resultCap.textContent = '你的实际时薪';
+      el.resultValue.textContent = fmt(hourly, 2);
+      el.resultFormula.textContent = money(amount) + ' ÷ (' + fmt(workDays, 2) + ' 天 × ' +
+        fmt(hours, 2) + ' 小时) = ¥' + fmt(hourly, 2) + ' / 小时';
+    } else {
+      el.resultCap.textContent = '对应月薪';
+      el.resultValue.textContent = fmt(monthly, 2);
+      el.resultFormula.textContent = '¥' + fmt(amount, 2) + ' × ' + fmt(workDays, 2) + ' 天 × ' +
+        fmt(hours, 2) + ' 小时 = ' + money(monthly) + ' / 月';
+    }
+
+    // 明细
+    el.outDays.textContent = fmt(workDays, 2) + ' 天';
+    el.outHours.textContent = fmt(hours, 2) + ' 小时';
+    el.outMonthlyHours.textContent = fmt(monthlyHours, 2) + ' 小时';
+    el.outDaily.textContent = money(daily);
+    el.outAnnual.textContent = money(annual);
+    el.outAnnualHours.textContent = fmt(annualHours, 0) + ' 小时';
+    el.outStandard.textContent = money(standardMonthly) + ' / 月';
+
+    // 主输入框标签随模式切换
+    if (state.mode === 'toHourly') {
+      el.amountLabel.textContent = '月薪';
+      el.amountUnit.textContent = '元 / 月';
+    } else {
+      el.amountLabel.textContent = '时薪';
+      el.amountUnit.textContent = '元 / 小时';
+    }
+  }
+
+  function update() {
+    syncWorkDaysFromPattern();
+    compute();
+  }
+
+  // 模式切换
+  el.mode.addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-mode]');
+    if (!btn) return;
+    state.mode = btn.dataset.mode;
+    Array.prototype.forEach.call(el.mode.querySelectorAll('button'), function (b) {
+      b.classList.toggle('active', b === btn);
+    });
+    // 模式切换时给主输入一个合理默认值
+    if (state.mode === 'toHourly' && num(el.amount, 0) < 100) el.amount.value = '10000';
+    if (state.mode === 'toMonthly' && num(el.amount, 0) > 2000) el.amount.value = '50';
+    compute();
+  });
+
+  // 工作制切换
+  el.pattern.addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-ratio]');
+    if (!btn) return;
+    var parts = btn.dataset.ratio.split('/');
+    state.ratio = parseFloat(parts[0]) / parseFloat(parts[1]);
+    state.manualDays = false;
+    el.workDays.classList.remove('edited');
+    el.workDaysHint.textContent = btn.dataset.name + ' · 自动';
+    Array.prototype.forEach.call(el.pattern.querySelectorAll('button'), function (b) {
+      b.classList.toggle('active', b === btn);
+    });
+    update();
+  });
+
+  // 每月天数变化 → 重新推算工作日
+  el.daysPerMonth.addEventListener('input', function () {
+    state.manualDays = false;
+    el.workDays.classList.remove('edited');
+    el.workDaysHint.textContent = '按比例自动';
+    update();
+  });
+
+  // 手动改工作日 → 脱离自动
+  el.workDays.addEventListener('input', function () {
+    state.manualDays = true;
+    el.workDays.classList.add('edited');
+    el.workDaysHint.textContent = '已手动指定';
+    compute();
+  });
+
+  el.amount.addEventListener('input', compute);
+  el.hoursPerDay.addEventListener('input', compute);
+
+  // 初始化
+  el.pattern.querySelector('button[data-ratio="5/7"]').classList.add('active');
+  update();
+})();
+</script>
+</body>
+</html>
